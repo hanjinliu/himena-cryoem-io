@@ -1,0 +1,66 @@
+[build-system]
+requires = ["hatchling>=1.26.1"]
+build-backend = "hatchling.build"
+
+[project]
+name = "himena-cryoem-io"
+dynamic = ["version"]
+description = 'File readers and writers for cryo-EM'
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+keywords = []
+authors = [
+  { name = "hanjinliu", email = "liuhanjin.sc@gmail.com" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+  "starfile>=0.5.11",
+  "imodmodel>=0.0.14",
+  "mdocfile",
+  "mrcfile",
+]
+
+[project.urls]
+Documentation = "https://github.com/hanjinliu/himena-cryoem-io#readme"
+Issues = "https://github.com/hanjinliu/himena-cryoem-io/issues"
+Source = "https://github.com/hanjinliu/himena-cryoem-io"
+
+[tool.hatch.version]
+path = "src/himena_cryoem_io/__init__.py"
+
+[tool.hatch.envs.types]
+extra-dependencies = [
+  "mypy>=1.0.0",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:src/himena_cryoem_io tests}"
+
+[tool.coverage.run]
+source_pkgs = ["himena_cryoem_io", "tests"]
+branch = true
+parallel = true
+
+[tool.coverage.paths]
+himena_cryoem_io = ["src/himena_cryoem_io", "*/himena-cryoem-io/src/himena_cryoem_io"]
+tests = ["tests", "*/himena-cryoem-io/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
+
+[project.entry-points."himena.plugin"]
+"Cryo-EM IO" = "himena_cryoem_io.io"
+"Cryo-EM Fetch" = "himena_cryoem_io.fetch"
