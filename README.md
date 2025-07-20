@@ -5,7 +5,9 @@
 
 -----
 
-Read and write files related to cryo-EM.
+![](https://github.com/hanjinliu/himena-cryoem-io/image.png)
+
+Read and write files related to cryogenic electron microscopy (cryo-EM).
 
 ## Installation
 
@@ -19,4 +21,4 @@ himena <my-profile> --install himena-cryoem-io
 
 ## License
 
-`himena-cryoem-io` is distributed under the terms of the [BSD 3-Clause](https://spdx.org/licenses/BSD 3-Clause.html) license.
+`himena-cryoem-io` is distributed under the terms of the [BSD 3-Clause](https://spdx.org/licenses/BSD-3-Clause.html) license.

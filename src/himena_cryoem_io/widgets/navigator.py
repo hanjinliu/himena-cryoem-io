@@ -3,13 +3,16 @@ from __future__ import annotations
 from pathlib import Path
 import mdocfile
 import numpy as np
-from qtpy import QtWidgets as QtW
+import pandas as pd
+from qtpy import QtWidgets as QtW, QtCore
+from superqt import QToggleSwitch
 
 from himena import StandardType, WidgetDataModel
 from himena.plugins import validate_protocol
 from himena.io_utils import read
 from himena_builtins.qt.widgets.image import QImageGraphicsView
 from himena_cryoem_io._parse_nav import parse_nav, NavFile, NavItem, MapItem
+from himena_cryoem_io.consts import Type
 
 
 class QNavigator(QtW.QSplitter):
@@ -27,6 +30,8 @@ class QNavigator(QtW.QSplitter):
         self.addWidget(self._img_view)
         self._nav_file: NavFile | None = None
         self._nav_source: Path | None = None
+        self._control_widget = QNavigatorControl(self)
+        self.setSizes([300, 500])
 
     @validate_protocol
     def update_model(self, model: WidgetDataModel):
@@ -43,11 +48,15 @@ class QNavigator(QtW.QSplitter):
 
     @validate_protocol
     def model_type(self) -> str:
-        return "text.SerialEM-nav"
+        return Type.NAV
 
     @validate_protocol
     def size_hint(self) -> tuple[int, int]:
-        return 600, 420
+        return 800, 420
+
+    @validate_protocol
+    def control_widget(self) -> QNavigatorControl:
+        return self._control_widget
 
     def _add_nav_item(self, item: NavItem):
         tree_item = QtW.QTreeWidgetItem(self._tree_widget)
@@ -62,13 +71,19 @@ class QNavigator(QtW.QSplitter):
         tree_item.setText(8, item.note)
         self._tree_widget.addTopLevelItem(tree_item)
 
-    def _on_tree_item_double_clicked(self, item):
-        if self._nav_file is None:
-            return
+    def _nav_item_for_item(self, item: QtW.QTreeWidgetItem) -> NavItem | None:
         row = self._tree_widget.indexOfTopLevelItem(item)
         if row == -1:
             return
-        nav_item = self._nav_file.items[row]
+        return self._nav_file.items[row]
+
+    def _on_tree_item_double_clicked(self, item):
+        if self._nav_file is None:
+            return
+        if nav_item := self._nav_item_for_item(item):
+            self._set_nav_item(nav_item)
+
+    def _set_nav_item(self, nav_item: NavItem):
         if isinstance(nav_item, MapItem):
             path = _solve_path(nav_item.params.map_file, self._nav_source)
             model = read(path)
@@ -79,19 +94,69 @@ class QNavigator(QtW.QSplitter):
                 raise ValueError(f"Expected a 2D or 3D image, got shape {img.shape}")
             elif img.ndim == 3:
                 if nav_item.params.map_montage:
-                    # TODO: read mdoc and montage the images
                     mdoc_path = path.with_suffix(f"{path.suffix}.mdoc")
                     if not mdoc_path.exists():
                         raise FileNotFoundError(f"mdoc file not found: {mdoc_path}")
-                    # TODO: bug in mdocfile; cannot read mdoc file
                     mdoc = mdocfile.read(mdoc_path)
-                    mdoc
+                    align = self._control_widget._align_switch.isChecked()
+                    img_slice = _tile_montage(img, mdoc, align=align)
                 else:
                     img_slice = img[nav_item.params.map_section]
             else:
                 img_slice = img
             self._img_view.set_n_images(1)
-            self._img_view.set_array(0, img_slice)
+            self._img_view.set_array(0, _as_uint8(img_slice))
+            self._img_view.auto_range()
+
+
+class QNavigatorControl(QtW.QWidget):
+    def __init__(self, navigator: QNavigator):
+        super().__init__()
+        self._navigator = navigator
+        layout = QtW.QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+
+        # align the montage if this switch is checked
+        self._align_switch = QToggleSwitch("Align")
+        self._align_switch.setChecked(True)
+        layout.addWidget(self._align_switch)
+
+        self._align_switch.toggled.connect(self._on_align_toggled)
+
+    def _on_align_toggled(self, checked: bool):
+        if item := self._navigator._tree_widget.currentItem():
+            if nav_item := self._navigator._nav_item_for_item(item):
+                if isinstance(nav_item, MapItem):
+                    self._navigator._set_nav_item(nav_item)
+
+
+def _tile_montage(img: np.ndarray, mdoc: pd.DataFrame, align: bool) -> np.ndarray:
+    mont_xmin, mont_ymin = 0, 0
+    mont_xmax, mont_ymax = 0, 0
+    image_size_y, image_size_x = img.shape[1:]
+    colname = "AlignedPieceCoords" if align else "PieceCoordinates"
+    # first, determine the montage shape
+    for coords in mdoc[colname]:
+        if coords is None:
+            continue
+        mont_xmax = int(max(mont_xmax, coords[0] + image_size_x))
+        mont_ymax = int(max(mont_ymax, coords[1] + image_size_y))
+        mont_xmin = int(min(mont_xmin, coords[0]))
+        mont_ymin = int(min(mont_ymin, coords[1]))
+    img_montage = np.zeros(
+        (mont_ymax - mont_ymin, mont_xmax - mont_xmin), dtype=np.uint8
+    )
+    i_min, i_max = _quick_clim(img)
+    for zvalue, coords in zip(mdoc["ZValue"], mdoc[colname]):
+        if coords is None:
+            continue
+        y = int(coords[1]) - mont_ymin
+        x = int(coords[0]) - mont_xmin
+        img_slice = img[int(zvalue)]
+        img_u8 = ((img_slice - i_min) / (i_max - i_min) * 255).astype(np.uint8)
+        img_montage[y : y + image_size_y, x : x + image_size_x] = img_u8
+    return img_montage
 
 
 def _solve_path(path: Path, nav_path: Path | None = None) -> Path:
@@ -101,3 +166,16 @@ def _solve_path(path: Path, nav_path: Path | None = None) -> Path:
     if nav_path is not None and (fp := nav_path.parent.joinpath(path.name)).exists():
         return fp
     raise FileNotFoundError(f"File not found: {path}")
+
+
+def _as_uint8(img: np.ndarray) -> np.ndarray:
+    """Convert an image to uint8."""
+    if img.dtype == np.uint8:
+        return img
+    _min, _max = img.min(), img.max()
+    return ((img - _min) / (_max - _min) * 255).astype(np.uint8)
+
+
+def _quick_clim(img: np.ndarray) -> tuple[int, int]:
+    img_sub = img[..., ::4]
+    return tuple(np.quantile(img_sub, [0.001, 0.999]))
