@@ -5,9 +5,16 @@
 
 -----
 
-![](https://github.com/hanjinliu/himena-cryoem-io/image.png)
+![](https://github.com/hanjinliu/himena-cryoem-io/blob/main/image.png)
 
 Read and write files related to cryogenic electron microscopy (cryo-EM).
+
+This plugin supports file I/O for:
+
+- RELION **star** file as a table stack widget.
+- SerialEM **nav** file as a SerialEM-like widget.
+- SerialEM **mdoc** file as a table widget.
+- cryoSPARC **cs** file as a table widget.
 
 ## Installation
 
