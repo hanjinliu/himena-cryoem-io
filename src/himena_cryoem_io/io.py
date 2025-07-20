@@ -5,9 +5,10 @@ import numpy as np
 from himena import StandardType, WidgetDataModel
 from himena.standards.model_meta import TextMeta
 from himena.plugins import register_reader_plugin, register_writer_plugin
+from himena_cryoem_io.consts import Type
 from himena_cryoem_io import widgets
 
-del widgets
+del widgets  # reading nav always needs the widget.
 
 
 @register_reader_plugin
@@ -49,16 +50,16 @@ def read_mod(path: Path):
     import imodmodel
 
     imod = imodmodel.ImodModel.from_file(path)
-    return WidgetDataModel(value=imod, type="Imod")
+    return WidgetDataModel(value=imod, type=Type.IMOD_MODEL)
 
 
-def write_mod(path: Path, data: WidgetDataModel): ...
+def write_mod(path: Path, data: WidgetDataModel):
+    import imodmodel
 
-
-def read_pdb(path: Path): ...
-
-
-def write_pdb(path: Path, data: WidgetDataModel): ...
+    if isinstance(imod := data.value, imodmodel.ImodModel):
+        imod.to_file(path)
+    else:
+        raise TypeError(f"Expected imodmodel.ImodModel, got {type(imod)}")
 
 
 @register_reader_plugin
@@ -136,11 +137,11 @@ def read_nav(path: Path):
     # For the file format, see:
     # https://bio3d.colorado.edu/SerialEM/hlp/html/about_formats.htm
     text = path.read_text()
-    return WidgetDataModel(value=text, type="text.SerialEM-nav")
+    return WidgetDataModel(value=text, type=Type.NAV)
 
 
 @read_nav.define_matcher
 def _(path: Path):
     if path.suffix == ".nav":
-        return "text.SerialEM-nav"
+        return Type.NAV
     return None

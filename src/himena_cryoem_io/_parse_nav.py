@@ -37,6 +37,10 @@ class NavItem(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class MapItem(NavItem):
+    params: MapParams
+
+
 class NavFile(BaseModel):
     adoc_version: str
     last_saved_as: Path
@@ -90,6 +94,20 @@ def parse_item(lines: list[str], label: str) -> NavItem:
             break
 
     obj["metadata"] = meta
+    if obj["type"] is ItemType.MAP:
+        map_params_dict = {
+            "map_file": Path(meta.pop("MapFile")),
+            "map_id": meta.pop("MapID"),
+            "map_montage": int(meta.pop("MapMontage")),
+            "map_section": int(meta.pop("MapSection")),
+            "map_binning": int(meta.pop("MapBinning")),
+            "map_mag_ind": int(meta.pop("MapMagInd")),
+            "map_camera": int(meta.pop("MapCamera")),
+            "map_scale_mat": tuple(map(float, meta.pop("MapScaleMat").split())),
+            "map_width_height": tuple(map(int, meta.pop("MapWidthHeight").split())),
+        }
+        obj["params"] = MapParams(**map_params_dict)
+        return MapItem(**obj)
     return NavItem(**obj)
 
 

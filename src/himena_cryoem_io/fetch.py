@@ -6,7 +6,7 @@ from typing import Literal
 from himena import Parametric, StandardType, WidgetDataModel
 from himena.consts import MenuId
 from himena.widgets import set_status_tip
-from himena.standards.model_meta import ImageMeta, ArrayAxis
+from himena.standards.model_meta import ImageMeta, DimAxis
 from himena.plugins import register_function, configure_gui
 import numpy as np
 
@@ -45,7 +45,7 @@ def fetch_emdb() -> Parametric:
                 with mrcfile.open(map_path) as mrc:
                     img = np.array(mrc.data)
                     axes = [
-                        ArrayAxis(name=axis, scale=float(mrc.voxel_size[axis]))
+                        DimAxis(name=axis, scale=float(mrc.voxel_size[axis]))
                         for axis in "zyx"
                     ]
         else:
