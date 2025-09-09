@@ -26,7 +26,7 @@ classifiers = [
 dependencies = [
   "starfile>=0.5.13",
   "imodmodel>=0.1.0",
-  "mdocfile",
+  "mdocfile>=0.2.2",
   "mrcfile",
 ]
 

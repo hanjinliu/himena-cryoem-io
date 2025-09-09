@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import numpy as np
 from himena import StandardType, WidgetDataModel
-from himena.standards.model_meta import TextMeta
+from himena.standards.model_meta import TextMeta, DictMeta, DataFrameMeta
 from himena.plugins import register_reader_plugin, register_writer_plugin
 from himena_cryoem_io.consts import Type
 from himena_cryoem_io import widgets
@@ -13,11 +13,28 @@ del widgets  # reading nav always needs the widget.
 
 @register_reader_plugin
 def read_star(path: Path):
+    """Read a star file as a dictionary of dataframes."""
     import starfile
 
     dict_of_blocks = starfile.read(path, always_dict=True)
     assert isinstance(dict_of_blocks, dict)
-    return WidgetDataModel(value=dict_of_blocks, type=StandardType.DATAFRAMES)
+    meta = DictMeta(
+        child_meta={
+            key: DataFrameMeta(transpose=_should_transpose(value))
+            for key, value in dict_of_blocks.items()
+        }
+    )
+    return WidgetDataModel(
+        value=dict_of_blocks,
+        type=StandardType.DATAFRAMES,
+        metadata=meta,
+    )
+
+
+def _should_transpose(val) -> bool:
+    if isinstance(val, dict):
+        return True
+    return len(val) == 1
 
 
 @read_star.define_matcher
