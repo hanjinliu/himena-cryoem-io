@@ -19,10 +19,13 @@ This plugin supports file I/O for:
 ## Installation
 
 ```console
-pip install himena-cryoem-io
+himena <my-profile> --get himena-cryoem-io
 ```
 
+or manually via pip:
+
 ```console
+pip install himena-cryoem-io
 himena <my-profile> --install himena-cryoem-io
 ```
 
