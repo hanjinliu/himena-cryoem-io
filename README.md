@@ -15,6 +15,8 @@ This plugin supports file I/O for:
 - SerialEM **nav** file as a SerialEM-like widget.
 - SerialEM **mdoc** file as a table widget.
 - cryoSPARC **cs** file as a table widget.
+- CTFFind **.ctf** file as an image widget.
+- IMOD **.xf** file as a table widget.
 
 ## Installation
 

@@ -5,6 +5,7 @@ import numpy as np
 from himena import StandardType, WidgetDataModel
 from himena.standards.model_meta import TextMeta, DictMeta, DataFrameMeta
 from himena.plugins import register_reader_plugin, register_writer_plugin
+from himena.data_wrappers import wrap_dataframe
 from himena_cryoem_io.consts import Type
 from himena_cryoem_io import widgets
 
@@ -63,6 +64,7 @@ def _(model: WidgetDataModel, path: Path):
     return type_ok and ext_ok
 
 
+@register_reader_plugin
 def read_mod(path: Path):
     import imodmodel
 
@@ -70,6 +72,14 @@ def read_mod(path: Path):
     return WidgetDataModel(value=imod, type=Type.IMOD_MODEL)
 
 
+@read_mod.define_matcher
+def _(path: Path):
+    if path.suffix == ".mod":
+        return Type.IMOD_MODEL
+    return None
+
+
+@register_writer_plugin
 def write_mod(path: Path, data: WidgetDataModel):
     import imodmodel
 
@@ -77,6 +87,11 @@ def write_mod(path: Path, data: WidgetDataModel):
         imod.to_file(path)
     else:
         raise TypeError(f"Expected imodmodel.ImodModel, got {type(imod)}")
+
+
+@write_mod.define_matcher
+def _(model: WidgetDataModel, path: Path):
+    return model.is_subtype_of(Type.IMOD_MODEL) and path.suffix == ".mod"
 
 
 @register_reader_plugin
@@ -162,3 +177,58 @@ def _(path: Path):
     if path.suffix == ".nav":
         return Type.NAV
     return None
+
+
+@register_reader_plugin
+def read_ctf(path: Path):
+    """Read a CTFFind CTF file as an image."""
+    import mrcfile
+
+    with mrcfile.open(path) as f:
+        arr = f.data
+    return WidgetDataModel(value=arr[0], type=StandardType.IMAGE)
+
+
+@read_ctf.define_matcher
+def _(path: Path):
+    if path.suffix == ".ctf":
+        return StandardType.IMAGE
+    return None
+
+
+@register_reader_plugin
+def read_xf(path: Path):
+    """Read an IMOD xf file as a dataframe."""
+    # https://warpem.github.io/warp/reference/warptools/custom_tilt_series_alignments
+    arr = [a.split() for a in path.read_text(encoding="utf-8").splitlines()]
+    arr = np.array(arr, dtype=np.float32)
+    # A11 A12 A21 A22 DX DY
+    columns = ["A11", "A12", "A21", "A22", "DX", "DY"]
+    df = {col: arr[:, i] for i, col in enumerate(columns)}
+    return WidgetDataModel(value=df, type=StandardType.DATAFRAME)
+
+
+@read_xf.define_matcher
+def _(path: Path):
+    if path.suffix == ".xf":
+        return StandardType.DATAFRAME
+    return None
+
+
+@register_writer_plugin
+def write_xf(model: WidgetDataModel, path: Path):
+    """Write a dataframe to an IMOD xf file."""
+    df = wrap_dataframe(model.value)
+    if df.column_names() != ["A11", "A12", "A21", "A22", "DX", "DY"]:
+        raise ValueError(
+            f"Expected columns ['A11', 'A12', 'A21', 'A22', 'DX', 'DY'], got {df.column_names()}"
+        )
+    csv = df.to_csv_string(separator="\t", header=False)
+    path.write_text(csv)
+
+
+@write_xf.define_matcher
+def _(model: WidgetDataModel, path: Path):
+    type_ok = model.type == StandardType.DATAFRAME
+    ext_ok = path.suffix == ".xf"
+    return type_ok and ext_ok
