@@ -16,6 +16,9 @@ from himena_cryoem_io.consts import Type
 
 
 class QNavigator(QtW.QSplitter):
+    __himena_widget_id__ = "himena-cryoem-io:QNavigator"
+    __himena_display_name__ = "SerialEM Navigator Viewer"
+
     def __init__(self):
         super().__init__()
         self._tree_widget = QtW.QTreeWidget()

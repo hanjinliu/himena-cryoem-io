@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import numpy as np
 from himena import StandardType, WidgetDataModel
-from himena.standards.model_meta import TextMeta, DictMeta, DataFrameMeta
+from himena.standards.model_meta import TextMeta
 from himena.plugins import register_reader_plugin, register_writer_plugin
 from himena.data_wrappers import wrap_dataframe
 from himena_cryoem_io.consts import Type
@@ -15,41 +15,22 @@ del widgets  # reading nav always needs the widget.
 @register_reader_plugin
 def read_star(path: Path):
     """Read a star file as a dictionary of dataframes."""
-    import starfile
-
-    dict_of_blocks = starfile.read(path, always_dict=True)
-    assert isinstance(dict_of_blocks, dict)
-    meta = DictMeta(
-        child_meta={
-            key: DataFrameMeta(transpose=_should_transpose(value))
-            for key, value in dict_of_blocks.items()
-        }
-    )
     return WidgetDataModel(
-        value=dict_of_blocks,
-        type=StandardType.DATAFRAMES,
-        metadata=meta,
+        value=path.read_text(),
+        type=Type.STAR,
     )
-
-
-def _should_transpose(val) -> bool:
-    if isinstance(val, dict):
-        return True
-    return len(val) == 1
 
 
 @read_star.define_matcher
 def _(path: Path):
     if path.suffix == ".star":
-        return StandardType.DATAFRAMES
+        return Type.STAR
     return None
 
 
 @register_writer_plugin
 def write_star(path: Path, model: WidgetDataModel):
-    import starfile
-
-    return starfile.write(model.value, path)
+    return path.write_text(model.value)
 
 
 @write_star.define_matcher
@@ -210,7 +191,7 @@ def read_xf(path: Path):
 
 @read_xf.define_matcher
 def _(path: Path):
-    if path.suffix == ".xf":
+    if path.suffix in [".xf", ".prexf"]:
         return StandardType.DATAFRAME
     return None
 
@@ -230,5 +211,5 @@ def write_xf(model: WidgetDataModel, path: Path):
 @write_xf.define_matcher
 def _(model: WidgetDataModel, path: Path):
     type_ok = model.type == StandardType.DATAFRAME
-    ext_ok = path.suffix == ".xf"
+    ext_ok = path.suffix in [".xf", ".prexf"]
     return type_ok and ext_ok

@@ -24,7 +24,8 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  "starfile>=0.5.13",
+  "starfile_rs>=0.1.6",
+  "polars>=1.34.0",
   "imodmodel>=0.1.0",
   "mdocfile>=0.2.2",
   "mrcfile",
