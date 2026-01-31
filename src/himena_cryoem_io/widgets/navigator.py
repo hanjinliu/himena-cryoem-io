@@ -2,20 +2,23 @@ from __future__ import annotations
 
 from pathlib import Path
 import mdocfile
+import mrcfile
 import numpy as np
 import pandas as pd
 from qtpy import QtWidgets as QtW, QtCore
 from superqt import QToggleSwitch
 
-from himena import StandardType, WidgetDataModel
+from himena import WidgetDataModel
 from himena.plugins import validate_protocol
-from himena.io_utils import read
 from himena_builtins.qt.widgets.image import QImageGraphicsView
 from himena_cryoem_io._parse_nav import parse_nav, NavFile, NavItem, MapItem
 from himena_cryoem_io.consts import Type
 
 
 class QNavigator(QtW.QSplitter):
+    __himena_widget_id__ = "himena-cryoem-io:QNavigator"
+    __himena_display_name__ = "SerialEM Navigator Viewer"
+
     def __init__(self):
         super().__init__()
         self._tree_widget = QtW.QTreeWidget()
@@ -86,10 +89,8 @@ class QNavigator(QtW.QSplitter):
     def _set_nav_item(self, nav_item: NavItem):
         if isinstance(nav_item, MapItem):
             path = _solve_path(nav_item.params.map_file, self._nav_source)
-            model = read(path)
-            if not model.is_subtype_of(StandardType.IMAGE):
-                raise ValueError(f"Expected an image, got type {model.type!r}")
-            img = np.asarray(model.value)
+            with mrcfile.open(path, permissive=True) as mrc:
+                img = np.asarray(mrc.data)
             if img.ndim > 3:
                 raise ValueError(f"Expected a 2D or 3D image, got shape {img.shape}")
             elif img.ndim == 3:

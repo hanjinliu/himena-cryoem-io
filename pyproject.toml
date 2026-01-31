@@ -20,11 +20,13 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  "starfile>=0.5.13",
+  "starfile_rs>=0.1.6",
+  "polars>=1.34.0",
   "imodmodel>=0.1.0",
   "mdocfile>=0.2.2",
   "mrcfile",
@@ -63,4 +65,5 @@ exclude_lines = [
 
 [project.entry-points."himena.plugin"]
 "Cryo-EM IO" = "himena_cryoem_io.io"
+"Cryo-EM Tools" = "himena_cryoem_io.tools"
 "Cryo-EM Fetch" = "himena_cryoem_io.fetch"

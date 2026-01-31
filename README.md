@@ -11,12 +11,12 @@ Read and write files related to cryogenic electron microscopy (cryo-EM).
 
 This plugin supports file I/O for:
 
-- RELION **star** file as a table stack widget.
-- SerialEM **nav** file as a SerialEM-like widget.
-- SerialEM **mdoc** file as a table widget.
-- cryoSPARC **cs** file as a table widget.
+- RELION **.star** file as a table stack widget.
+- SerialEM **.nav** file as a SerialEM-like widget.
+- SerialEM **.mdoc** file as a table widget.
+- cryoSPARC **.cs** file as a table widget.
 - CTFFind **.ctf** file as an image widget.
-- IMOD **.xf** file as a table widget.
+- IMOD **.xf**/**.prexf** file as a table widget.
 
 ## Installation
 
