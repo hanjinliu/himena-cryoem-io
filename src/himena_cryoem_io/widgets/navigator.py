@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import warnings
 import mdocfile
 import mrcfile
 import numpy as np
@@ -35,6 +36,8 @@ class QNavigator(QtW.QSplitter):
         self._nav_source: Path | None = None
         self._control_widget = QNavigatorControl(self)
         self.setSizes([300, 500])
+
+        self._img_view.wheel_moved.connect(self._on_wheel_moved)
 
     @validate_protocol
     def update_model(self, model: WidgetDataModel):
@@ -109,6 +112,16 @@ class QNavigator(QtW.QSplitter):
             self._img_view.set_array(0, _as_uint8(img_slice))
             self._img_view.auto_range()
 
+    def _on_wheel_moved(self, dy: int):
+        # zoom in/out
+        factor = 1.1
+        if dy > 0:
+            zoom_factor = factor
+        else:
+            zoom_factor = 1 / factor
+        self._img_view.scale_and_update_handles(zoom_factor)
+        self._img_view._inform_scale()
+
 
 class QNavigatorControl(QtW.QWidget):
     def __init__(self, navigator: QNavigator):
@@ -136,7 +149,21 @@ def _tile_montage(img: np.ndarray, mdoc: pd.DataFrame, align: bool) -> np.ndarra
     mont_xmin, mont_ymin = 0, 0
     mont_xmax, mont_ymax = 0, 0
     image_size_y, image_size_x = img.shape[1:]
-    colname = "AlignedPieceCoords" if align else "PieceCoordinates"
+    if align:
+        if "AlignedPieceCoordsVS" in mdoc.columns:
+            colname = "AlignedPieceCoordsVS"
+        elif "AlignedPieceCoords" in mdoc.columns:
+            colname = "AlignedPieceCoords"
+        else:
+            warnings.warn(
+                "No aligned coordinates found in mdoc file. Falling back to unaligned "
+                "coordinates.",
+                UserWarning,
+                stacklevel=2,
+            )
+            colname = "PieceCoordinates"
+    else:
+        colname = "PieceCoordinates"
     # first, determine the montage shape
     for coords in mdoc[colname]:
         if coords is None:
@@ -154,7 +181,7 @@ def _tile_montage(img: np.ndarray, mdoc: pd.DataFrame, align: bool) -> np.ndarra
             continue
         y = int(coords[1]) - mont_ymin
         x = int(coords[0]) - mont_xmin
-        img_slice = img[int(zvalue)]
+        img_slice = np.clip(img[int(zvalue)], i_min, i_max)
         img_u8 = ((img_slice - i_min) / (i_max - i_min) * 255).astype(np.uint8)
         img_montage[y : y + image_size_y, x : x + image_size_x] = img_u8
     return img_montage
@@ -174,9 +201,10 @@ def _as_uint8(img: np.ndarray) -> np.ndarray:
     if img.dtype == np.uint8:
         return img
     _min, _max = img.min(), img.max()
+    img = np.clip(img, _min, _max)
     return ((img - _min) / (_max - _min) * 255).astype(np.uint8)
 
 
 def _quick_clim(img: np.ndarray) -> tuple[int, int]:
     img_sub = img[..., ::4]
-    return tuple(np.quantile(img_sub, [0.001, 0.999]))
+    return tuple(np.quantile(img_sub, [0.01, 0.999]))
