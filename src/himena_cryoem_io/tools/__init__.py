@@ -1,7 +1,8 @@
 from himena.plugins import configure_submenu
 from himena_cryoem_io.consts import MenuId
-from himena_cryoem_io.tools import star
+from himena_cryoem_io.tools import star, serialem
 
-configure_submenu(MenuId.CRYOEM, "Cryo-EM")
+configure_submenu(MenuId.CRYOEM, "CryoEM")
+configure_submenu(MenuId.SERIALEM, "SerialEM")
 
-del star, configure_submenu, MenuId
+del star, serialem, configure_submenu, MenuId
