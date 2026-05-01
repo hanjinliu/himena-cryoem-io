@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-import warnings
 import mdocfile
 import mrcfile
 import numpy as np
-import pandas as pd
 from qtpy import QtWidgets as QtW, QtCore
 from superqt import QToggleSwitch
 
@@ -13,6 +11,7 @@ from himena import WidgetDataModel
 from himena.plugins import validate_protocol
 from himena_builtins.qt.widgets.image import QImageGraphicsView
 from himena_cryoem_io._parse_nav import parse_nav, NavFile, NavItem, MapItem
+from himena_cryoem_io._utils import tile_montage
 from himena_cryoem_io.consts import Type
 
 
@@ -103,7 +102,7 @@ class QNavigator(QtW.QSplitter):
                         raise FileNotFoundError(f"mdoc file not found: {mdoc_path}")
                     mdoc = mdocfile.read(mdoc_path)
                     align = self._control_widget._align_switch.isChecked()
-                    img_slice = _tile_montage(img, mdoc, align=align)
+                    img_slice = tile_montage(img, mdoc, align=align)
                 else:
                     img_slice = img[nav_item.params.map_section]
             else:
@@ -145,48 +144,6 @@ class QNavigatorControl(QtW.QWidget):
                     self._navigator._set_nav_item(nav_item)
 
 
-def _tile_montage(img: np.ndarray, mdoc: pd.DataFrame, align: bool) -> np.ndarray:
-    mont_xmin, mont_ymin = 0, 0
-    mont_xmax, mont_ymax = 0, 0
-    image_size_y, image_size_x = img.shape[1:]
-    if align:
-        if "AlignedPieceCoordsVS" in mdoc.columns:
-            colname = "AlignedPieceCoordsVS"
-        elif "AlignedPieceCoords" in mdoc.columns:
-            colname = "AlignedPieceCoords"
-        else:
-            warnings.warn(
-                "No aligned coordinates found in mdoc file. Falling back to unaligned "
-                "coordinates.",
-                UserWarning,
-                stacklevel=2,
-            )
-            colname = "PieceCoordinates"
-    else:
-        colname = "PieceCoordinates"
-    # first, determine the montage shape
-    for coords in mdoc[colname]:
-        if coords is None:
-            continue
-        mont_xmax = int(max(mont_xmax, coords[0] + image_size_x))
-        mont_ymax = int(max(mont_ymax, coords[1] + image_size_y))
-        mont_xmin = int(min(mont_xmin, coords[0]))
-        mont_ymin = int(min(mont_ymin, coords[1]))
-    img_montage = np.zeros(
-        (mont_ymax - mont_ymin, mont_xmax - mont_xmin), dtype=np.uint8
-    )
-    i_min, i_max = _quick_clim(img)
-    for zvalue, coords in zip(mdoc["ZValue"], mdoc[colname]):
-        if coords is None:
-            continue
-        y = int(coords[1]) - mont_ymin
-        x = int(coords[0]) - mont_xmin
-        img_slice = np.clip(img[int(zvalue)], i_min, i_max)
-        img_u8 = ((img_slice - i_min) / (i_max - i_min) * 255).astype(np.uint8)
-        img_montage[y : y + image_size_y, x : x + image_size_x] = img_u8
-    return img_montage
-
-
 def _solve_path(path: Path, nav_path: Path | None = None) -> Path:
     path = path.resolve()
     if path.exists():
@@ -203,8 +160,3 @@ def _as_uint8(img: np.ndarray) -> np.ndarray:
     _min, _max = img.min(), img.max()
     img = np.clip(img, _min, _max)
     return ((img - _min) / (_max - _min) * 255).astype(np.uint8)
-
-
-def _quick_clim(img: np.ndarray) -> tuple[int, int]:
-    img_sub = img[..., ::4]
-    return tuple(np.quantile(img_sub, [0.01, 0.999]))

@@ -7,3 +7,4 @@ class Type:
 class MenuId:
     CRYOEM = "tools/cryoem"
     STAR = "tools/cryoem/star"
+    SERIALEM = "tools/cryoem/serialem"
