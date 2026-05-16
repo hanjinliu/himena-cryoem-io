@@ -67,3 +67,7 @@ exclude_lines = [
 "Cryo-EM IO" = "himena_cryoem_io.io"
 "Cryo-EM Tools" = "himena_cryoem_io.tools"
 "Cryo-EM Fetch" = "himena_cryoem_io.fetch"
+
+[project.entry-points."pygments.lexers"]
+star = "himena_cryoem_io.lexers:StarLexer"
+mdoc = "himena_cryoem_io.lexers:MdocLexer"
