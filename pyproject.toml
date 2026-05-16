@@ -70,3 +70,4 @@ exclude_lines = [
 
 [project.entry-points."pygments.lexers"]
 star = "himena_cryoem_io.lexers:StarLexer"
+mdoc = "himena_cryoem_io.lexers:MdocLexer"

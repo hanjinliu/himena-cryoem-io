@@ -18,6 +18,7 @@ def read_star(path: Path):
     return WidgetDataModel(
         value=path.read_text(),
         type=Type.STAR,
+        extension_default=".star",
     )
 
 
@@ -128,8 +129,43 @@ def _(model: WidgetDataModel, path: Path):
     return path.suffix == ".csg"
 
 
-@register_reader_plugin
+@register_reader_plugin(priority=100)
 def read_mdoc(path: Path):
+    """Read a SerialEM mdoc file as text."""
+    return WidgetDataModel(
+        value=path.read_text(),
+        type=StandardType.TEXT,
+        extension_default=".mdoc",
+        metadata=TextMeta(language="mdoc"),
+    )
+
+
+@read_mdoc.define_matcher
+def _(path: Path):
+    if path.suffix == ".mdoc":
+        return StandardType.TEXT
+    return None
+
+
+@register_writer_plugin
+def write_mdoc(path: Path, model: WidgetDataModel):
+    """Write text to a SerialEM mdoc file."""
+    val = model.value
+    if isinstance(val, str):
+        path.write_text(model.value)
+    else:
+        import mdocfile
+
+        mdocfile.write(val, path)
+
+
+@write_mdoc.define_matcher
+def _(model: WidgetDataModel, path: Path):
+    return model.extension_default == ".mdoc"
+
+
+@register_reader_plugin(priority=10)
+def read_mdoc_as_dataframe(path: Path):
     """Read a SerialEM mdoc file as a dataframe."""
     import mdocfile
 
@@ -137,7 +173,7 @@ def read_mdoc(path: Path):
     return WidgetDataModel(value=df, type=StandardType.DATAFRAME)
 
 
-@read_mdoc.define_matcher
+@read_mdoc_as_dataframe.define_matcher
 def _(path: Path):
     if path.suffix == ".mdoc":
         return StandardType.DATAFRAME

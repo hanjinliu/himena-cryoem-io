@@ -17,11 +17,14 @@ class StarLexer(RegexLexer):
                 token.Keyword.Reserved,
             ),
             (r"^data_\w*", token.Keyword.Reserved),
-            # Numbers
-            (r"[+-]?(\d+\.\d*|\.\d+|\d+)([eE][+-]?\d+)?", token.Number.Float),
-            (r"\b\d+\b", token.Number.Integer),
             # Data items (e.g., _rlnVoltage)
             (r"^_\w+", token.Name.Variable),
+            # Numbers
+            (
+                r"[+-]?(\d+\.\d*|\.\d+|\d+)([eE][+-]?\d+)?(?=\s|\t|$)",
+                token.Number.Float,
+            ),
+            (r"\b\d+(?=\s|\t|$)", token.Number.Integer),
             # Strings (quoted)
             (r"'(\\\\|\\'|[^'])*'", token.String.Single),
             (r'"(\\\\|\\"|[^"])*"', token.String.Double),
@@ -30,9 +33,29 @@ class StarLexer(RegexLexer):
             # Whitespace
             (r"\s+", token.Text.Whitespace),
         ],
-        # copied from the pygments built-in Python lexer
-        "numbers": [
-            (r"[+-]?(\d+\.\d*|\.\d+|\d+)([eE][+-]?\d+)?", token.Number.Float),
-            (r"\b\d+\b", token.Number.Integer),
+    }
+
+
+class MdocLexer(RegexLexer):
+    name = "MDOC"
+    aliases = ["mdoc"]
+    filenames = ["*.mdoc"]
+
+    tokens = {
+        "root": [
+            # Titles with brackets
+            (r"\[.*?\]", token.Name.Tag),
+            # Field assignments (field_name = )
+            (r"^\w+\s*=\s*", token.Name.Variable),
+            # Numbers
+            (
+                r"[+-]?(\d+\.\d*|\.\d+|\d+)([eE][+-]?\d+)?(?=\s|\t|$)",
+                token.Number.Float,
+            ),
+            (r"\b\d+(?=\s|\t|$)", token.Number.Integer),
+            # Values / Identifiers
+            (r"\S+", token.Text),
+            # Whitespace
+            (r"\s+", token.Text.Whitespace),
         ],
     }
