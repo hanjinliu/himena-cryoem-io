@@ -26,7 +26,6 @@ def read_star(path: Path):
 def _(path: Path):
     if path.suffix == ".star":
         return Type.STAR
-    return None
 
 
 @register_writer_plugin
